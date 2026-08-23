@@ -1,0 +1,25 @@
+#!/bin/sh
+# InstaDeploy's entry point, placed on PATH by the plugin.
+#
+# It exists so the agent runs `instadeploy ...` rather than a path into the
+# user's home directory. That matters for one reason: permission rules match the
+# command TEXT, so a home-directory path makes the rule depend on where the
+# plugin happened to be installed, and it breaks the moment that changes.
+# `Bash(instadeploy:*)` is stable, short enough to read, and names exactly one
+# program.
+set -eu
+
+# Resolve the real script relative to this file rather than trusting a variable,
+# so the wrapper works however it was invoked — through PATH, a symlink, or a
+# direct path.
+self="$0"
+while [ -L "$self" ]; do
+  link="$(readlink "$self")"
+  case "$link" in
+    /*) self="$link" ;;
+    *)  self="$(dirname "$self")/$link" ;;
+  esac
+done
+root="$(cd "$(dirname "$self")/.." && pwd)"
+
+exec "$root/skills/deploy-project/scripts/deploy.sh" "$@"
