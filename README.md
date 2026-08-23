@@ -16,20 +16,16 @@ catches the things that would deploy successfully and then break in production
 
 ## Set up
 
-Sign in at <https://instadeploy-api-315525417718.europe-west1.run.app>. Your API
-key is on the page with the two export lines ready to copy:
-
-```bash
-export INSTADEPLOY_TOKEN="idp_..."
-export INSTADEPLOY_API="https://instadeploy-api-315525417718.europe-west1.run.app"
-```
-
-Put them in `~/.zshrc` so they survive a new terminal.
-
-Then merge this into `~/.claude/settings.json`:
+Sign in at <https://instadeploy-api-315525417718.europe-west1.run.app> and copy
+your API key. Then merge this into `~/.claude/settings.json` and restart Claude
+Code:
 
 ```json
 {
+  "env": {
+    "INSTADEPLOY_TOKEN": "idp_...",
+    "INSTADEPLOY_API": "https://instadeploy-api-315525417718.europe-west1.run.app"
+  },
   "permissions": {
     "allow": [
       "Bash(instadeploy:*)",
@@ -39,9 +35,18 @@ Then merge this into `~/.claude/settings.json`:
 }
 ```
 
-Claude Code refuses network calls to hosts it has not been told about, and a
-plugin cannot grant itself permissions — that is the sandbox working. One rule,
-naming one program, once. Claude Code reloads settings without a restart.
+The dashboard shows this block with your key already in it.
+
+One file rather than exports in a shell profile, because a variable set in a
+different terminal from the one Claude Code is running in is the failure that
+wastes an afternoon.
+
+The permission half cannot be skipped: Claude Code refuses network calls to
+hosts it has not been told about, and a plugin cannot grant itself permissions.
+That is the sandbox working. One rule, naming one program, once.
+
+That file now holds your API key, so treat it like a password and keep it out of
+any repository.
 
 ## Limits
 
