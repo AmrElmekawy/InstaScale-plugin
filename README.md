@@ -9,8 +9,14 @@ catches the things that would deploy successfully and then break in production
 
 ## Install
 
+In Claude Code, run these **one at a time** — pasting both together makes Claude
+Code read them as a single command and reject the marketplace name:
+
 ```
 /plugin marketplace add AmrElmekawy/instadeploy-plugin
+```
+
+```
 /plugin install instadeploy@instadeploy
 ```
 
