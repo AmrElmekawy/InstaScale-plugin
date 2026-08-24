@@ -1,11 +1,11 @@
 #!/bin/sh
 # InstaScale's entry point, placed on PATH by the plugin.
 #
-# It exists so the agent runs `instadeploy ...` rather than a path into the
+# It exists so the agent runs `instascale ...` rather than a path into the
 # user's home directory. That matters for one reason: permission rules match the
 # command TEXT, so a home-directory path makes the rule depend on where the
 # plugin happened to be installed, and it breaks the moment that changes.
-# `Bash(instadeploy:*)` is stable, short enough to read, and names exactly one
+# `Bash(instascale:*)` is stable, short enough to read, and names exactly one
 # program.
 set -eu
 

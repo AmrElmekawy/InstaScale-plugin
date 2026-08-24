@@ -1,12 +1,12 @@
 {
-  "name": "instadeploy",
+  "name": "instascale",
   "description": "InstaScale — take a vibe-coded project from your editor to a live HTTPS URL with a real database.",
   "owner": {
     "name": "Amr Elmekawy"
   },
   "plugins": [
     {
-      "name": "instadeploy",
+      "name": "instascale",
       "source": "./plugin",
       "description": "Deploy a vibe-coded project to a live HTTPS URL with a PostgreSQL database."
     }

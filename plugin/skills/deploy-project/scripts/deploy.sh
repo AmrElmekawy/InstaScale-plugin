@@ -6,13 +6,14 @@
 # the polling loop — each of which is easy to get subtly wrong in a way that
 # only shows up as a confusing 409 or a duplicate deployment.
 #
-#   ./deploy.sh                              # redeploy (reads instadeploy.yaml)
-#   ./deploy.sh --name my-app                # first deploy
-#   ./deploy.sh --name my-app --database postgres
+#   instascale                              # redeploy (reads instascale.yaml)
+#   instascale --name my-app                # first deploy
+#   instascale --name my-app --database postgres
 #
 set -euo pipefail
 
-API="${INSTADEPLOY_API:?set INSTADEPLOY_API}"
+API="${INSTASCALE_API:-${INSTADEPLOY_API:-}}"
+: "${API:?set INSTASCALE_API}"
 
 # --instructions fetches the readiness contract and exits.
 #
@@ -28,7 +29,8 @@ if [ "${1:-}" = "--instructions" ]; then
   exit $?
 fi
 
-TOKEN="${INSTADEPLOY_TOKEN:?set INSTADEPLOY_TOKEN}"
+TOKEN="${INSTASCALE_TOKEN:-${INSTADEPLOY_TOKEN:-}}"
+: "${TOKEN:?set INSTASCALE_TOKEN}"
 
 NAME="" ; DATABASE="" ; HEALTH="/" ; MIGRATION="" ; WAIT=90
 while [ $# -gt 0 ]; do
@@ -43,18 +45,32 @@ while [ $# -gt 0 ]; do
 done
 
 # --- project identity -------------------------------------------------------
-# The id lives in instadeploy.yaml and is what makes a redeploy land on the same
+# The id lives in instascale.yaml and is what makes a redeploy land on the same
 # URL and the same database. Deriving identity from the directory name would
 # mean a rename creates a second service with an empty database — which to the
 # user is indistinguishable from their data being deleted.
+#
+# The pre-rename file name is still read for exactly that reason: a project
+# whose id we stop finding does not fail, it silently becomes a NEW project.
 PROJECT_ID=""
-if [ -f instadeploy.yaml ]; then
-  PROJECT_ID="$(sed -n 's/^[[:space:]]*id:[[:space:]]*\(.*\)$/\1/p' instadeploy.yaml | head -1 | tr -d '"'"'"' ')"
-  [ -z "$NAME" ] && NAME="$(sed -n 's/^[[:space:]]*name:[[:space:]]*\(.*\)$/\1/p' instadeploy.yaml | head -1 | tr -d '"'"'"' ')"
-  [ -z "$DATABASE" ] && DATABASE="$(sed -n 's/^[[:space:]]*type:[[:space:]]*\(.*\)$/\1/p' instadeploy.yaml | head -1 | tr -d '"'"'"' ')"
+CONFIG=""
+for f in instascale.yaml instadeploy.yaml; do
+  [ -f "$f" ] && { CONFIG="$f"; break; }
+done
+if [ -n "$CONFIG" ]; then
+  PROJECT_ID="$(sed -n 's/^[[:space:]]*id:[[:space:]]*\(.*\)$/\1/p' "$CONFIG" | head -1 | tr -d '"'"'"' ')"
+  [ -z "$NAME" ] && NAME="$(sed -n 's/^[[:space:]]*name:[[:space:]]*\(.*\)$/\1/p' "$CONFIG" | head -1 | tr -d '"'"'"' ')"
+  [ -z "$DATABASE" ] && DATABASE="$(sed -n 's/^[[:space:]]*type:[[:space:]]*\(.*\)$/\1/p' "$CONFIG" | head -1 | tr -d '"'"'"' ')"
+fi
+# Migrate in place once the id has been read, so the old name disappears
+# without the project ever losing its identity.
+if [ "$CONFIG" = "instadeploy.yaml" ] && [ -n "$PROJECT_ID" ]; then
+  mv instadeploy.yaml instascale.yaml
+  CONFIG=instascale.yaml
+  echo "renamed instadeploy.yaml to instascale.yaml (same project, same URL) - commit it"
 fi
 if [ -z "$PROJECT_ID" ] && [ -z "$NAME" ]; then
-  echo "no instadeploy.yaml and no --name: cannot tell which project this is" >&2
+  echo "no instascale.yaml and no --name: cannot tell which project this is" >&2
   exit 2
 fi
 
@@ -69,7 +85,7 @@ tar --no-xattrs -czf "$WORK/source.tar.gz" \
   --exclude='./venv' --exclude='./__pycache__' --exclude='./.next' \
   --exclude='./dist' --exclude='./build' --exclude='./target' \
   --exclude='./.env' --exclude='./.env.*' --exclude='./.DS_Store' \
-  --exclude='./instadeploy-source.tar.gz' \
+  --exclude='./instascale-source.tar.gz' \
   . 2>/dev/null
 
 # --- metadata ---------------------------------------------------------------
@@ -89,7 +105,7 @@ tar --no-xattrs -czf "$WORK/source.tar.gz" \
 } > "$WORK/metadata.json"
 
 # --- request digest ---------------------------------------------------------
-# SHA256("instadeploy-request-v1" || 0x00 || uint64be(len(metadata)) ||
+# SHA256("instascale-request-v1" || 0x00 || uint64be(len(metadata)) ||
 #        metadata || sourceDigestBytes)
 # The RAW 32 bytes of the source digest, not its hex text — hashing the hex
 # gives a different answer and every retry would look like a different request.
@@ -98,7 +114,7 @@ import hashlib, struct, sys
 meta = open(sys.argv[1], 'rb').read()
 src  = hashlib.sha256(open(sys.argv[2], 'rb').read()).digest()
 h = hashlib.sha256()
-h.update(b"instadeploy-request-v1\x00")
+h.update(b"instascale-request-v1\x00")
 h.update(struct.pack(">Q", len(meta)))
 h.update(meta)
 h.update(src)
@@ -114,7 +130,7 @@ echo "deploying ${NAME:-$PROJECT_ID} ($(du -h "$WORK/source.tar.gz" | cut -f1)).
 RESP="$(curl -sS -X POST "$API/v1/deployments?wait=$WAIT" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Idempotency-Key: $KEY" \
-  -H "InstaDeploy-Request-Digest: $DIGEST" \
+  -H "InstaScale-Request-Digest: $DIGEST" \
   -F "metadata=<$WORK/metadata.json" \
   -F "source=@$WORK/source.tar.gz")"
 
@@ -166,7 +182,7 @@ fi
 # Committing this is what keeps the URL and the database stable next time.
 if [ $CODE -eq 0 ] && [ -z "$PROJECT_ID" ]; then
   NEW_ID="$(echo "$RESP" | python3 -c 'import sys,json;print(json.load(sys.stdin)["projectId"])')"
-  if [ ! -f instadeploy.yaml ]; then
+  if [ ! -f instascale.yaml ]; then
     {
       echo "version: 1"
       echo ""
@@ -184,9 +200,9 @@ if [ $CODE -eq 0 ] && [ -z "$PROJECT_ID" ]; then
         echo "  type: $DATABASE"
         [ -n "$MIGRATION" ] && echo "  migration: \"$MIGRATION\""
       }
-    } > instadeploy.yaml
+    } > instascale.yaml
     echo ""
-    echo "wrote instadeploy.yaml — commit it, or the next deploy creates a new"
+    echo "wrote instascale.yaml — commit it, or the next deploy creates a new"
     echo "project with a different URL and an empty database."
   fi
 fi

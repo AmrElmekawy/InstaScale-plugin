@@ -20,7 +20,7 @@ vibe-coded projects need one or two changes first. That is expected.
 ## 0. Read the rules first
 
 ```bash
-instadeploy --instructions
+instascale --instructions
 ```
 
 **Do this before you change or generate anything.** It returns the
@@ -45,7 +45,7 @@ The ones that matter most in practice:
 
 ## 2. Fix what is missing — and show your work
 
-**Adding deployment config** (a `Dockerfile`, an `instadeploy.yaml`) is routine.
+**Adding deployment config** (a `Dockerfile`, an `instascale.yaml`) is routine.
 Mention it and continue.
 
 **Changing the user's application** — migrating SQLite to Postgres, changing how
@@ -66,31 +66,31 @@ stack rather than writing one from scratch.
 Use the bundled scripts — they handle the archive exclusions, the request
 digest and the polling, which are easy to get subtly wrong:
 
-The plugin puts `instadeploy` on your PATH. Call it by that name — permission
+The plugin puts `instascale` on your PATH. Call it by that name — permission
 rules match the command text, so a path into the home directory would depend on
 where the plugin happens to be installed and would stop matching the moment that
 changed.
 
-> If `instadeploy: command not found`, this skill was installed as a bare
+> If `instascale: command not found`, this skill was installed as a bare
 > directory rather than as a plugin. Everything still works; use
-> `~/.claude/skills/deploy-project/scripts/deploy.sh` in place of `instadeploy`
+> `~/.claude/skills/deploy-project/scripts/deploy.sh` in place of `instascale`
 > below, and allow that path instead. Installing the plugin is the tidier fix.
 
 ```bash
-# First deploy (no instadeploy.yaml yet):
-instadeploy --name "my-app" --database postgres
+# First deploy (no instascale.yaml yet):
+instascale --name "my-app" --database postgres
 
-# Later deploys — the project id in instadeploy.yaml is picked up automatically:
-instadeploy
+# Later deploys — the project id in instascale.yaml is picked up automatically:
+instascale
 ```
 
 The script prints the deployment state as it goes and the URL when it is ready.
 
 ### If you deploy by hand instead
 
-`POST $INSTADEPLOY_API/v1/deployments?wait=90` as `multipart/form-data` with a
+`POST $INSTASCALE_API/v1/deployments?wait=90` as `multipart/form-data` with a
 `metadata` part and a `source` part, plus `Authorization`, `Idempotency-Key` and
-`InstaDeploy-Request-Digest`. The digest formula is in the instructions. Use a
+`InstaScale-Request-Digest`. The digest formula is in the instructions. Use a
 **new** idempotency key for each real deploy, and the **same** one when retrying
 after a lost response.
 
@@ -117,7 +117,7 @@ Give the user:
 - the **URL**
 - what you changed and why, if anything
 - whether it has a database
-- that `instadeploy.yaml` should be committed — it is what keeps the URL stable
+- that `instascale.yaml` should be committed — it is what keeps the URL stable
 
 ## Rules
 
@@ -132,7 +132,7 @@ Give the user:
 
 ## Setup
 
-`INSTADEPLOY_TOKEN` and `INSTADEPLOY_API` come from the user's
+`INSTASCALE_TOKEN` and `INSTASCALE_API` come from the user's
 `~/.claude/settings.json`. If the token is unset, tell them:
 
 > Sign in at https://instadeploy-api-315525417718.europe-west1.run.app. The
@@ -155,7 +155,7 @@ Claude Code reloads settings without a restart.
 {
   "permissions": {
     "allow": [
-      "Bash(instadeploy:*)",
+      "Bash(instascale:*)",
       "WebFetch(domain:instadeploy-api-315525417718.europe-west1.run.app)"
     ]
   }
@@ -170,9 +170,9 @@ query string while pointing somewhere else entirely.
 Approving the prompt interactively works too, but only for that session.
 
 **Never put the token on a command line.** It is already in the environment, so
-`INSTADEPLOY_TOKEN=... instadeploy` adds nothing and is refused by the classifier
+`INSTASCALE_TOKEN=... instascale` adds nothing and is refused by the classifier
 as an inline credential — which reads as a network problem and is not one. Run
-`instadeploy` plain.
+`instascale` plain.
 
 Do not look for a way around a denied call. A permission refusal is the user's
 decision, and routing the same request through a different tool to dodge it

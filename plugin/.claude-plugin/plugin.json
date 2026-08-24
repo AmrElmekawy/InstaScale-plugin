@@ -1,5 +1,5 @@
 {
-  "name": "instadeploy",
+  "name": "instascale",
   "displayName": "InstaScale",
   "version": "0.1.0",
   "description": "Deploy the current project to a live HTTPS URL with a real PostgreSQL database. Prepares the project first, then deploys and returns the link.",

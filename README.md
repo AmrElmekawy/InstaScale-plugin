@@ -13,11 +13,11 @@ In Claude Code, run these **one at a time** — pasting both together makes Clau
 Code read them as a single command and reject the marketplace name:
 
 ```
-/plugin marketplace add AmrElmekawy/instadeploy-plugin
+/plugin marketplace add AmrElmekawy/instascale-plugin
 ```
 
 ```
-/plugin install instadeploy@instadeploy
+/plugin install instascale@instascale
 ```
 
 ## Set up
@@ -29,12 +29,12 @@ Code:
 ```json
 {
   "env": {
-    "INSTADEPLOY_TOKEN": "idp_...",
-    "INSTADEPLOY_API": "https://instadeploy-api-315525417718.europe-west1.run.app"
+    "INSTASCALE_TOKEN": "isc_...",
+    "INSTASCALE_API": "https://instadeploy-api-315525417718.europe-west1.run.app"
   },
   "permissions": {
     "allow": [
-      "Bash(instadeploy:*)",
+      "Bash(instascale:*)",
       "WebFetch(domain:instadeploy-api-315525417718.europe-west1.run.app)"
     ]
   }
