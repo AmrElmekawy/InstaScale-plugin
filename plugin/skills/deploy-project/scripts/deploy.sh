@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Deploy the current directory to InstaDeploy.
+# Deploy the current directory to InstaScale.
 #
 # Exists so every agent does not reinvent tar exclusions, the request digest and
 # the polling loop — each of which is easy to get subtly wrong in a way that
@@ -170,7 +170,7 @@ if [ $CODE -eq 0 ] && [ -z "$PROJECT_ID" ]; then
     {
       echo "version: 1"
       echo ""
-      echo "# Written by InstaDeploy. COMMIT THIS FILE — it is what makes the next"
+      echo "# Written by InstaScale. COMMIT THIS FILE — it is what makes the next"
       echo "# deploy land on the same URL and the same database."
       echo "project:"
       echo "  id: $NEW_ID"

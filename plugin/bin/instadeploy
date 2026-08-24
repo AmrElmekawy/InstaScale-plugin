@@ -1,5 +1,5 @@
 #!/bin/sh
-# InstaDeploy's entry point, placed on PATH by the plugin.
+# InstaScale's entry point, placed on PATH by the plugin.
 #
 # It exists so the agent runs `instadeploy ...` rather than a path into the
 # user's home directory. That matters for one reason: permission rules match the

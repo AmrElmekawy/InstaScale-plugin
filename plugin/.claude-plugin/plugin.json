@@ -1,12 +1,12 @@
 {
   "name": "instadeploy",
-  "displayName": "InstaDeploy",
+  "displayName": "InstaScale",
   "version": "0.1.0",
   "description": "Deploy the current project to a live HTTPS URL with a real PostgreSQL database. Prepares the project first, then deploys and returns the link.",
   "author": {
     "name": "Amr Elmekawy"
   },
   "homepage": "https://instadeploy-api-315525417718.europe-west1.run.app",
-  "repository": "https://github.com/AmrElmekawy/InstaDeploy-Copy",
+  "repository": "https://github.com/AmrElmekawy/instadeploy-plugin",
   "keywords": ["deploy", "hosting", "cloud-run", "postgres", "https"]
 }

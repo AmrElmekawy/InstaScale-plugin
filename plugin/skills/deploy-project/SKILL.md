@@ -2,15 +2,15 @@
 name: deploy-project
 description: >-
   Deploy the current project to a live public HTTPS URL with a real PostgreSQL
-  database, using InstaDeploy. Use when the user asks to deploy, publish, host,
+  database, using InstaScale. Use when the user asks to deploy, publish, host,
   or "put this online", or asks for a link to share. Handles preparing the
   project first — a Dockerfile, migrating SQLite to Postgres, a production
   build — then deploys and returns the URL.
 ---
 
-# Deploy this project with InstaDeploy
+# Deploy this project with InstaScale
 
-You are deploying the user's project to InstaDeploy. It builds the project into
+You are deploying the user's project to InstaScale. It builds the project into
 a container, runs it on Cloud Run, gives it a PostgreSQL database, and returns a
 public HTTPS URL that stays the same across redeploys.
 
@@ -132,17 +132,15 @@ Give the user:
 
 ## Setup
 
-```bash
-export INSTADEPLOY_API="https://instadeploy-api-315525417718.europe-west1.run.app"
-export INSTADEPLOY_TOKEN="idp_..."
-```
+`INSTADEPLOY_TOKEN` and `INSTADEPLOY_API` come from the user's
+`~/.claude/settings.json`. If the token is unset, tell them:
 
-If `INSTADEPLOY_TOKEN` is unset, tell the user to get one:
+> Sign in at https://instadeploy-api-315525417718.europe-west1.run.app. The
+> dashboard shows a settings block with your key already in it — merge it into
+> `~/.claude/settings.json` and restart Claude Code.
 
-> Sign in at https://instadeploy-api-315525417718.europe-west1.run.app. Your key
-> is on the page with the two export lines ready to copy.
-
-Then ask them to paste it. Do not guess one, and do not commit it to the repo.
+Do not guess a token, do not commit one, and do not offer to write it into the
+project.
 
 ## Permissions
 
@@ -170,6 +168,11 @@ host-scoped curl rule does not actually bind — a URL can carry our hostname in
 query string while pointing somewhere else entirely.
 
 Approving the prompt interactively works too, but only for that session.
+
+**Never put the token on a command line.** It is already in the environment, so
+`INSTADEPLOY_TOKEN=... instadeploy` adds nothing and is refused by the classifier
+as an inline credential — which reads as a network problem and is not one. Run
+`instadeploy` plain.
 
 Do not look for a way around a denied call. A permission refusal is the user's
 decision, and routing the same request through a different tool to dodge it
