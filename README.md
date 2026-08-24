@@ -13,7 +13,7 @@ In Claude Code, run these **one at a time** — pasting both together makes Clau
 Code read them as a single command and reject the marketplace name:
 
 ```
-/plugin marketplace add AmrElmekawy/instascale-plugin
+/plugin marketplace add AmrElmekawy/InstaScale-plugin
 ```
 
 ```
