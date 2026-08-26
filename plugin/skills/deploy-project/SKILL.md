@@ -94,6 +94,39 @@ The script prints the deployment state as it goes and the URL when it is ready.
 **new** idempotency key for each real deploy, and the **same** one when retrying
 after a lost response.
 
+### Secrets and environment variables
+
+**The script handles this.** If the project has a `.env`, `instascale` uploads
+every key in it to the secrets endpoint before deploying, and Cloud Run injects
+them at boot.
+
+You do not need to ask the user to paste anything, and there is no dashboard
+form for this — if you find yourself inventing one, stop and re-read this
+section.
+
+```bash
+instascale                              # uses .env if present
+instascale --env-file .env.production   # a different file
+instascale --no-secrets                 # ignore .env entirely
+```
+
+Rules that matter:
+
+- **Never put a value in `instascale.yaml`.** That file is committed. A
+  service-role key there is permanent and public the moment the repo is.
+- **Never put a value in a deploy request or the source.** The archive becomes
+  an image anyone who can pull it can read. `.env*` is already excluded from
+  the archive; keep it that way.
+- **Never print a value.** Your transcript is somewhere neither you nor the
+  user can erase. Print names.
+- To manage them directly: `PUT /v1/projects/{id}/secrets` with
+  `{"secrets":{"NAME":"value"}}`, `GET` for names, `DELETE .../secrets/{name}`.
+  There is no endpoint that reads a value back, by design.
+
+If the user brings their own database — Supabase, Neon — put its `DATABASE_URL`
+in `.env` and **omit `database:` from the manifest**. Declaring `postgres` as
+well provisions one they did not ask for.
+
 ## 4. Handle the response
 
 - **`200` with `state: "ready"`** — done. Give the user the `url`.

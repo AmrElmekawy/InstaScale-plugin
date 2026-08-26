@@ -9,6 +9,8 @@
 #   instascale                              # redeploy (reads instascale.yaml)
 #   instascale --name my-app                # first deploy
 #   instascale --name my-app --database postgres
+#   instascale --env-file .env.production      # secrets from a named file
+#   instascale --no-secrets                    # ignore .env entirely
 #
 set -euo pipefail
 
@@ -33,6 +35,7 @@ TOKEN="${INSTASCALE_TOKEN:-${INSTADEPLOY_TOKEN:-}}"
 : "${TOKEN:?set INSTASCALE_TOKEN}"
 
 NAME="" ; DATABASE="" ; HEALTH="/" ; MIGRATION="" ; WAIT=90
+ENVFILE="" ; NOSECRETS=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --name)        NAME="$2";      shift 2 ;;
@@ -40,6 +43,8 @@ while [ $# -gt 0 ]; do
     --health-path) HEALTH="$2";    shift 2 ;;
     --migration)   MIGRATION="$2"; shift 2 ;;
     --wait)        WAIT="$2";      shift 2 ;;
+    --env-file)    ENVFILE="$2";   shift 2 ;;
+    --no-secrets)  NOSECRETS=1;    shift 1 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -74,7 +79,72 @@ if [ -z "$PROJECT_ID" ] && [ -z "$NAME" ]; then
   exit 2
 fi
 
+# --- secrets ----------------------------------------------------------------
+# Values from .env go to the secrets endpoint, never into the archive or the
+# manifest. The archive already excludes .env*, and instascale.yaml is a file
+# the user is told to COMMIT — a service-role key in either is permanent.
+#
+# Secrets are scoped to a project, so this needs the project id. A first deploy
+# does not have one until the response arrives; that case is handled after the
+# deploy, below.
+upload_secrets() {
+  _pid="$1"
+  _file="$2"
+  [ -z "$_pid" ] && return 0
+  [ -f "$_file" ] || return 0
+
+  _payload="$(python3 - "$_file" <<'PARSE_ENV'
+import json, sys
+out = {}
+for raw in open(sys.argv[1], encoding="utf-8", errors="replace"):
+    line = raw.strip()
+    if not line or line.startswith("#"):
+        continue
+    if line.startswith("export "):
+        line = line[len("export "):].lstrip()
+    if "=" not in line:
+        continue
+    k, v = line.split("=", 1)
+    k, v = k.strip(), v.strip()
+    # Strip one layer of matching quotes, the usual .env convention.
+    if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
+        v = v[1:-1]
+    if k and v:
+        out[k] = v
+print(json.dumps({"secrets": out}))
+PARSE_ENV
+)"
+
+  _count="$(printf '%s' "$_payload" | python3 -c 'import sys,json;print(len(json.load(sys.stdin)["secrets"]))')"
+  [ "$_count" = "0" ] && return 0
+
+  # NAMES are printed, values never are: this output lands in an agent
+  # transcript, which is the one place we can neither control nor erase.
+  echo "uploading $_count secret(s) from $_file:"
+  printf '%s' "$_payload" | python3 -c 'import sys,json;[print("  -",k) for k in sorted(json.load(sys.stdin)["secrets"])]'
+
+  _code="$(printf '%s' "$_payload" | curl -sS -o "$WORK/secrets.out" -w '%{http_code}' \
+    -X PUT "$API/v1/projects/$_pid/secrets" \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    --data-binary @-)"
+  if [ "$_code" != "200" ]; then
+    echo "could not store secrets (HTTP $_code):" >&2
+    cat "$WORK/secrets.out" >&2
+    return 1
+  fi
+  return 0
+}
+
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
+
+# Default to .env when the caller did not name a file.
+if [ -z "$ENVFILE" ] && [ -f .env ]; then
+  ENVFILE=.env
+fi
+if [ "$NOSECRETS" = "0" ] && [ -n "$ENVFILE" ] && [ -n "$PROJECT_ID" ]; then
+  upload_secrets "$PROJECT_ID" "$ENVFILE" || exit 1
+fi
 
 # --- archive ----------------------------------------------------------------
 # These exclusions are not cosmetic: node_modules alone can be 100x the size of
@@ -165,7 +235,13 @@ CODE=$?
 set -e
 
 # 3 means still running: poll it ourselves rather than handing that to the user.
-if [ $CODE -eq 3 ]; then
+#
+# A function because there are TWO deploys on a first run — the initial one and
+# the repeat that carries the secrets. Polling only the first left the second
+# still building when the script exited, so the app was reported as deployed
+# while the revision without its secrets was the one serving.
+poll_if_running() {
+  [ "$CODE" -eq 3 ] || return 0
   STATUS="$(echo "$RESP" | python3 -c 'import sys,json;print(json.load(sys.stdin)["statusUrl"])')"
   for _ in $(seq 1 60); do
     sleep 5
@@ -176,6 +252,32 @@ if [ $CODE -eq 3 ]; then
     echo "  $(echo "$RESP" | python3 -c 'import sys,json;print(json.load(sys.stdin)["state"])')..."
   done
   set +e; echo "$RESP" | show; CODE=$?; set -e
+  return 0
+}
+
+poll_if_running
+
+# --- first deploy: upload secrets, then deploy once more ---------------------
+# A first deploy has no project id until the response arrives, so its secrets
+# could not be uploaded beforehand. Upload them now and deploy again — otherwise
+# the first revision runs without the variables the app needs and fails for a
+# reason the user cannot see from the outside.
+if [ $CODE -eq 0 ] && [ -z "$PROJECT_ID" ] && [ "$NOSECRETS" = "0" ] && [ -n "$ENVFILE" ] && [ -f "$ENVFILE" ]; then
+  NEW_PID="$(echo "$RESP" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("projectId",""))')"
+  if [ -n "$NEW_PID" ] && upload_secrets "$NEW_PID" "$ENVFILE"; then
+    echo "redeploying so the secrets are present at boot..."
+    # A NEW idempotency key: this is a second real deploy, not a retry of the
+    # first. Reusing the key would return the first deployment unchanged.
+    KEY="$(python3 -c 'import uuid;print(uuid.uuid4())')"
+    RESP="$(curl -sS -X POST "$API/v1/deployments?wait=$WAIT" \
+      -H "Authorization: Bearer $TOKEN" \
+      -H "Idempotency-Key: $KEY" \
+      -H "InstaScale-Request-Digest: $DIGEST" \
+      -F "metadata=<$WORK/metadata.json" \
+      -F "source=@$WORK/source.tar.gz")"
+    set +e; echo "$RESP" | show; CODE=$?; set -e
+    poll_if_running
+  fi
 fi
 
 # --- record the project id --------------------------------------------------
