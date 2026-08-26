@@ -135,7 +135,7 @@ Give the user:
 `INSTASCALE_TOKEN` and `INSTASCALE_API` come from the user's
 `~/.claude/settings.json`. If the token is unset, tell them:
 
-> Sign in at https://instadeploy-api-315525417718.europe-west1.run.app. The
+> Sign in at https://app.instascale.ai. The
 > dashboard shows a settings block with your key already in it — merge it into
 > `~/.claude/settings.json` and restart Claude Code.
 
@@ -156,7 +156,7 @@ Claude Code reloads settings without a restart.
   "permissions": {
     "allow": [
       "Bash(instascale:*)",
-      "WebFetch(domain:instadeploy-api-315525417718.europe-west1.run.app)"
+      "WebFetch(domain:app.instascale.ai)"
     ]
   }
 }

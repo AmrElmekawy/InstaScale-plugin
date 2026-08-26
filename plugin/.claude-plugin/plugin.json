@@ -6,7 +6,7 @@
   "author": {
     "name": "Amr Elmekawy"
   },
-  "homepage": "https://instadeploy-api-315525417718.europe-west1.run.app",
+  "homepage": "https://app.instascale.ai",
   "repository": "https://github.com/AmrElmekawy/InstaScale-plugin",
   "keywords": ["deploy", "hosting", "cloud-run", "postgres", "https"]
 }

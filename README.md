@@ -22,7 +22,7 @@ Code read them as a single command and reject the marketplace name:
 
 ## Set up
 
-Sign in at <https://instadeploy-api-315525417718.europe-west1.run.app> and copy
+Sign in at <https://app.instascale.ai> and copy
 your API key. Then merge this into `~/.claude/settings.json` and restart Claude
 Code:
 
@@ -30,12 +30,12 @@ Code:
 {
   "env": {
     "INSTASCALE_TOKEN": "isc_...",
-    "INSTASCALE_API": "https://instadeploy-api-315525417718.europe-west1.run.app"
+    "INSTASCALE_API": "https://app.instascale.ai"
   },
   "permissions": {
     "allow": [
       "Bash(instascale:*)",
-      "WebFetch(domain:instadeploy-api-315525417718.europe-west1.run.app)"
+      "WebFetch(domain:app.instascale.ai)"
     ]
   }
 }
