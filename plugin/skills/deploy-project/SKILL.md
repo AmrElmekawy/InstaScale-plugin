@@ -76,6 +76,11 @@ changed.
 > `~/.claude/skills/deploy-project/scripts/deploy.sh` in place of `instascale`
 > below, and allow that path instead. Installing the plugin is the tidier fix.
 
+Run it as a bare command. Do not prefix it with variables
+(`INSTASCALE_TOKEN=... instascale`) and do not chain it behind `cd x &&` —
+permission rules match each subcommand, so a compound command is not covered by
+the rule the user approved and gets refused for a reason unrelated to deploying.
+
 ```bash
 # First deploy (no instascale.yaml yet):
 instascale --name "my-app" --database postgres
@@ -174,6 +179,14 @@ Give the user:
 
 Do not guess a token, do not commit one, and do not offer to write it into the
 project.
+
+**Never go looking for it.** Do not grep `~/.claude/settings.json` or any
+settings file, and do not dump the environment to see whether the variables are
+set. Those files hold credentials, so the sandbox blocks both — and the block
+looks like a new problem on top of the original one, which it is not.
+
+Running `instascale` IS the check. If a variable is missing the script says so
+and tells the user exactly what to do. Relay that and stop.
 
 ## Permissions
 

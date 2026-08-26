@@ -16,10 +16,28 @@ set -euo pipefail
 
 # Bumped with plugin.json. Sent on every request so the server can tell a stale
 # client it is stale, instead of it failing later in some oblique way.
-CLIENT_VERSION="0.2.0"
+CLIENT_VERSION="0.2.1"
 
+# A terse "parameter null or not set" sends an agent hunting through settings
+# files and environment dumps for the answer — both correctly blocked as
+# credential access, so it then fails twice more for reasons unrelated to the
+# missing value. Say exactly what to do instead.
 API="${INSTASCALE_API:-${INSTADEPLOY_API:-}}"
-: "${API:?set INSTASCALE_API}"
+if [ -z "$API" ]; then
+  cat >&2 <<'SETUP'
+INSTASCALE_API is not set.
+
+Tell the user, and do not go looking for it:
+
+  1. Sign in at https://app.instascale.ai
+  2. Copy the settings block shown there
+  3. Merge it into ~/.claude/settings.json and restart Claude Code
+
+Do NOT grep their settings files or dump the environment to check. That block
+sets both variables, and those files hold credentials.
+SETUP
+  exit 2
+fi
 
 # --instructions fetches the readiness contract and exits.
 #
@@ -36,7 +54,21 @@ if [ "${1:-}" = "--instructions" ]; then
 fi
 
 TOKEN="${INSTASCALE_TOKEN:-${INSTADEPLOY_TOKEN:-}}"
-: "${TOKEN:?set INSTASCALE_TOKEN}"
+if [ -z "$TOKEN" ]; then
+  cat >&2 <<'SETUP'
+INSTASCALE_TOKEN is not set.
+
+Tell the user, and do not go looking for it:
+
+  1. Sign in at https://app.instascale.ai — your API key is on the page
+  2. Copy the settings block shown there
+  3. Merge it into ~/.claude/settings.json and restart Claude Code
+
+Do NOT grep their settings files or dump the environment to check whether it is
+set. Running this command again IS the check, and those files hold credentials.
+SETUP
+  exit 2
+fi
 
 NAME="" ; DATABASE="" ; HEALTH="/" ; MIGRATION="" ; WAIT=90
 ENVFILE="" ; NOSECRETS=0

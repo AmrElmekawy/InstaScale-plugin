@@ -1,7 +1,7 @@
 {
   "name": "instascale",
   "displayName": "InstaScale",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Deploy the current project to a live HTTPS URL with a real PostgreSQL database. Prepares the project first, then deploys and returns the link.",
   "author": {
     "name": "Amr Elmekawy"
