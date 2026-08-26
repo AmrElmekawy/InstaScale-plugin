@@ -211,12 +211,15 @@ d = json.load(sys.stdin)
 err = d.get("error")
 if isinstance(err, dict):
     print("FAILED:", err.get("code",""), "-", err.get("message",""))
-    if d.get("filesToFix"): print("files to fix:", ", ".join(d["filesToFix"]))
+    if d.get("filesToFix"): print("files to fix:", ", ".join(d["filesToFix"] or []))
     v = d.get("validation") or {}
-    for f in v.get("errors", []):
+    # `or []` rather than a .get default: the key is PRESENT and null, so the
+    # default never applies and the loop raised TypeError over a perfectly good
+    # error message.
+    for f in (v.get("errors") or []):
         print("  [{}] {}: {}".format(f.get("precondition",""), f.get("file","-"), f.get("message","")))
         if f.get("fix"): print("      fix:", f["fix"])
-    for f in v.get("warnings", []):
+    for f in (v.get("warnings") or []):
         print("  warning [{}] {}".format(f.get("precondition",""), f.get("message","")))
     sys.exit(1)
 print("state:", d.get("state"))
