@@ -1,12 +1,18 @@
 {
   "name": "instascale",
   "displayName": "InstaScale",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Deploy the current project to a live HTTPS URL with a real PostgreSQL database. Prepares the project first, then deploys and returns the link.",
   "author": {
     "name": "Amr Elmekawy"
   },
   "homepage": "https://app.instascale.ai",
   "repository": "https://github.com/AmrElmekawy/InstaScale-plugin",
-  "keywords": ["deploy", "hosting", "cloud-run", "postgres", "https"]
+  "keywords": [
+    "deploy",
+    "hosting",
+    "cloud-run",
+    "postgres",
+    "https"
+  ]
 }

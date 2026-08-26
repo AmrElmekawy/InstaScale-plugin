@@ -211,6 +211,21 @@ Do not look for a way around a denied call. A permission refusal is the user's
 decision, and routing the same request through a different tool to dodge it
 defeats the point of their asking to be asked.
 
+## Staying current
+
+**The rules are served live.** `instascale --instructions`, the preconditions,
+the Dockerfile templates, validation and every limit come from the server on
+each run — so when they change, just deploying again picks them up. Never work
+from memory of a previous run.
+
+Only the bundled script itself ships with the plugin. If a response carries a
+`clientUpdate` field, relay it once and continue — it is advisory, not a
+failure:
+
+```
+/plugin update instascale
+```
+
 ## Limits
 
 Three projects and $2 of deployment credit per account, shared across projects.

@@ -14,6 +14,10 @@
 #
 set -euo pipefail
 
+# Bumped with plugin.json. Sent on every request so the server can tell a stale
+# client it is stale, instead of it failing later in some oblique way.
+CLIENT_VERSION="0.2.0"
+
 API="${INSTASCALE_API:-${INSTADEPLOY_API:-}}"
 : "${API:?set INSTASCALE_API}"
 
@@ -199,6 +203,7 @@ echo "deploying ${NAME:-$PROJECT_ID} ($(du -h "$WORK/source.tar.gz" | cut -f1)).
 
 RESP="$(curl -sS -X POST "$API/v1/deployments?wait=$WAIT" \
   -H "Authorization: Bearer $TOKEN" \
+  -H "InstaScale-Client-Version: $CLIENT_VERSION" \
   -H "Idempotency-Key: $KEY" \
   -H "InstaScale-Request-Digest: $DIGEST" \
   -F "metadata=<$WORK/metadata.json" \
@@ -227,6 +232,7 @@ if d.get("url"):        print("URL:", d["url"])
 if d.get("projectId"):  print("projectId:", d["projectId"])
 if d.get("errorMessage"): print("error:", d["errorMessage"])
 if d.get("fixHint"):    print("hint:", d["fixHint"])
+if d.get("clientUpdate"): print("note:", d["clientUpdate"])
 if d.get("filesToFix"): print("files to fix:", ", ".join(d["filesToFix"]))
 if not d.get("terminal"): print("statusUrl:", d.get("statusUrl"))
 sys.exit(0 if d.get("state") == "ready" else 2 if d.get("terminal") else 3)
@@ -248,7 +254,7 @@ poll_if_running() {
   STATUS="$(echo "$RESP" | python3 -c 'import sys,json;print(json.load(sys.stdin)["statusUrl"])')"
   for _ in $(seq 1 60); do
     sleep 5
-    RESP="$(curl -sS "$API$STATUS" -H "Authorization: Bearer $TOKEN")"
+    RESP="$(curl -sS "$API$STATUS" -H "Authorization: Bearer $TOKEN" -H "InstaScale-Client-Version: $CLIENT_VERSION")"
     if echo "$RESP" | python3 -c 'import sys,json;sys.exit(0 if json.load(sys.stdin)["terminal"] else 1)'; then
       break
     fi
@@ -274,6 +280,7 @@ if [ $CODE -eq 0 ] && [ -z "$PROJECT_ID" ] && [ "$NOSECRETS" = "0" ] && [ -n "$E
     KEY="$(python3 -c 'import uuid;print(uuid.uuid4())')"
     RESP="$(curl -sS -X POST "$API/v1/deployments?wait=$WAIT" \
       -H "Authorization: Bearer $TOKEN" \
+      -H "InstaScale-Client-Version: $CLIENT_VERSION" \
       -H "Idempotency-Key: $KEY" \
       -H "InstaScale-Request-Digest: $DIGEST" \
       -F "metadata=<$WORK/metadata.json" \
