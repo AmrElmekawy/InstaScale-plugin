@@ -1,5 +1,9 @@
 # InstaScale for Claude Code
 
+<p align="center">
+  <img src="assets/instascale-mark.png" width="160" alt="InstaScale logo">
+</p>
+
 Say "deploy this" in your project. You get a live HTTPS URL and a real
 PostgreSQL database, usually in about a minute.
 
