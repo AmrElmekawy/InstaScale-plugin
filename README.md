@@ -1,4 +1,4 @@
-# InstaDeploy for Claude Code
+# InstaScale for Claude Code
 
 Say "deploy this" in your project. You get a live HTTPS URL and a real
 PostgreSQL database, usually in about a minute.
