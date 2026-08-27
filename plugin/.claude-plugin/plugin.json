@@ -4,10 +4,11 @@
   "version": "0.2.2",
   "description": "Deploy the current project to a live HTTPS URL with a real PostgreSQL database. Prepares the project first, then deploys and returns the link.",
   "author": {
-    "name": "Amr Elmekawy"
+    "name": "InstaScale",
+    "url": "https://app.instascale.ai"
   },
   "homepage": "https://app.instascale.ai",
-  "repository": "https://github.com/AmrElmekawy/InstaScale-plugin",
+  "repository": "https://app.instascale.ai",
   "keywords": [
     "deploy",
     "hosting",

@@ -246,6 +246,14 @@ one part of this system that can be stale.** Treat it that way:
 /plugin update instascale
 ```
 
+If the plugin is not installed at all, the marketplace is added by URL — it is
+served by the same deployment as the API, so it is never out of step with it:
+
+```
+/plugin marketplace add https://app.instascale.ai/marketplace.json
+/plugin install instascale@instascale
+```
+
 **A file that exists in the project but is missing from the archive is a client
 bug, not a project problem.** Update the plugin and deploy again. Do not rename,
 move, or restructure the user's source to work around it — you would be editing

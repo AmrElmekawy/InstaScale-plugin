@@ -2,7 +2,8 @@
   "name": "instascale",
   "description": "InstaScale — take a vibe-coded project from your editor to a live HTTPS URL with a real database.",
   "owner": {
-    "name": "Amr Elmekawy"
+    "name": "InstaScale",
+    "url": "https://app.instascale.ai"
   },
   "plugins": [
     {
