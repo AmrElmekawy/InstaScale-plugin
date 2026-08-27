@@ -16,7 +16,7 @@ set -euo pipefail
 
 # Bumped with plugin.json. Sent on every request so the server can tell a stale
 # client it is stale, instead of it failing later in some oblique way.
-CLIENT_VERSION="0.2.1"
+CLIENT_VERSION="0.2.2"
 
 # A terse "parameter null or not set" sends an agent hunting through settings
 # files and environment dumps for the answer — both correctly blocked as
@@ -183,16 +183,77 @@ if [ "$NOSECRETS" = "0" ] && [ -n "$ENVFILE" ] && [ -n "$PROJECT_ID" ]; then
 fi
 
 # --- archive ----------------------------------------------------------------
-# These exclusions are not cosmetic: node_modules alone can be 100x the size of
-# the source, and .env* must never reach the image, where it is permanent and
-# readable by anyone who can pull it.
-tar --no-xattrs -czf "$WORK/source.tar.gz" \
-  --exclude='./.git' --exclude='./node_modules' --exclude='./.venv' \
-  --exclude='./venv' --exclude='./__pycache__' --exclude='./.next' \
-  --exclude='./dist' --exclude='./build' --exclude='./target' \
-  --exclude='./.env' --exclude='./.env.*' --exclude='./.DS_Store' \
-  --exclude='./instascale-source.tar.gz' \
-  . 2>/dev/null
+# In a git repository the file list comes from git, because .gitignore already
+# records which paths are source and which are generated - per project, and at
+# every depth. A name blocklist cannot: `build`, `dist` and `target` are
+# conventions, not facts, and a project that keeps a vite plugin in build/ had
+# it silently dropped, surfacing as a module-not-found inside the container
+# that points nowhere near the cause. It also cuts the archive to what is
+# actually committed, which is usually the difference between fitting in a
+# request and not. The exclusion patterns below are additionally interpreted
+# differently by GNU tar and bsdtar, so what shipped depended on the OS.
+#
+# COPYFILE_DISABLE=1 because --no-xattrs does NOT stop bsdtar writing macOS
+# AppleDouble forks: every deploy from a Mac shipped a ._Dockerfile beside the
+# Dockerfile. `tar -tzf` hides those entries, which is why it went unseen.
+#
+# .env* stays force-excluded by pathspec rather than trusting the project's
+# .gitignore. Keeping a secret out of the image is a safety property, and it
+# must not depend on the user having configured something correctly.
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  git ls-files -z --cached --others --exclude-standard \
+    -- ':!:.env' ':!:.env.*' ':!:**/.env' ':!:**/.env.*' \
+       ':!:*.tar.gz' ':!:.DS_Store' ':!:**/.DS_Store' \
+    > "$WORK/files.z"
+
+  # An empty list means every file is ignored or nothing is committed yet. The
+  # server would reject the empty archive as UPLOAD_FAILED, which describes the
+  # network rather than the .gitignore that actually caused it.
+  if [ ! -s "$WORK/files.z" ]; then
+    echo "git lists no deployable files in this directory." >&2
+    echo "Either nothing is committed yet, or .gitignore excludes everything." >&2
+    exit 2
+  fi
+
+  COPYFILE_DISABLE=1 tar --no-xattrs --null -T "$WORK/files.z" -czf "$WORK/source.tar.gz"
+else
+  # No git, so fall back to matching names. Exclusions stay anchored with ./ on
+  # purpose: unanchoring them would drop a nested directory named build/ or
+  # dist/ that holds real source.
+  COPYFILE_DISABLE=1 tar --no-xattrs -czf "$WORK/source.tar.gz" \
+    --exclude='./.git' --exclude='./node_modules' --exclude='./.venv' \
+    --exclude='./venv' --exclude='./__pycache__' --exclude='./.next' \
+    --exclude='./dist' --exclude='./build' --exclude='./target' \
+    --exclude='./.env' --exclude='./.env.*' --exclude='./.DS_Store' \
+    --exclude='./instascale-source.tar.gz' \
+    . 2>/dev/null
+fi
+
+# --- size -------------------------------------------------------------------
+# Cloud Run caps an HTTP/1.1 request body at 32 MiB and rejects anything larger
+# at its frontend, before the server is reached. That reply is HTML, so the
+# JSON reader below fails on it and the size - the one fact that would explain
+# the failure - never reaches the user. Refuse here instead, and name what is
+# taking up the room so the next step is obvious.
+ARCHIVE_BYTES="$(wc -c < "$WORK/source.tar.gz" | tr -d ' ')"
+if [ "$ARCHIVE_BYTES" -gt 33554432 ]; then
+  echo "the archive is $((ARCHIVE_BYTES / 1048576)) MB and the upload limit is 32 MB." >&2
+  echo "" >&2
+  echo "largest entries:" >&2
+  # Read the archive with tarfile rather than parsing `tar -tv`: bsdtar and GNU
+  # tar put the size in different columns, so the awk that worked on Linux
+  # reported every file as 0 MB on macOS.
+  python3 - "$WORK/source.tar.gz" >&2 <<'BIGGEST'
+import sys, tarfile
+with tarfile.open(sys.argv[1]) as t:
+    files = sorted((m.size, m.name) for m in t if m.isfile())
+for size, name in reversed(files[-15:]):
+    print("  %8.1f MB  %s" % (size / 1048576.0, name))
+BIGGEST
+  echo "" >&2
+  echo "Add whatever should not ship to .gitignore, then deploy again." >&2
+  exit 2
+fi
 
 # --- metadata ---------------------------------------------------------------
 # Written once and hashed as-is. A retry must resend byte-identical content, so

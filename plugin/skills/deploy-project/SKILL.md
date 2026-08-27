@@ -167,6 +167,9 @@ Give the user:
   names only.
 - Poll to a terminal state yourself.
 - Report the link only when `state` is `ready`.
+- If a deploy fails and the response carries `clientUpdate`, run
+  `/plugin update instascale` and retry before changing anything.
+- Never work around a missing-from-archive file by editing the user's project.
 
 ## Setup
 
@@ -231,13 +234,23 @@ the Dockerfile templates, validation and every limit come from the server on
 each run — so when they change, just deploying again picks them up. Never work
 from memory of a previous run.
 
-Only the bundled script itself ships with the plugin. If a response carries a
-`clientUpdate` field, relay it once and continue — it is advisory, not a
-failure:
+Only the bundled script itself ships with the plugin — so **the client is the
+one part of this system that can be stale.** Treat it that way:
+
+- On a **successful** deploy, a `clientUpdate` field is advisory. Relay it once
+  and continue.
+- On a **failed** deploy, a `clientUpdate` field is the most likely explanation
+  you have. Update and retry **before** diagnosing anything else:
 
 ```
 /plugin update instascale
 ```
+
+**A file that exists in the project but is missing from the archive is a client
+bug, not a project problem.** Update the plugin and deploy again. Do not rename,
+move, or restructure the user's source to work around it — you would be editing
+their project to route around a bug that is already fixed in a version you can
+install in seconds, and the workaround outlives the bug.
 
 ## Limits
 
